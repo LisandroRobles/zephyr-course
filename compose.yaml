@@ -1,0 +1,25 @@
+services:
+  zephyr-dev:
+    build:
+      context: .
+      dockerfile: dockerfile
+
+    environment:
+      ZEPHYR_SDK_INSTALL_DIR: /workspace/.zephyr-sdk
+
+    working_dir: /workspace/zephyr-course
+
+    volumes:
+      # compose.yaml is inside zephyr-course, so .. is west topdir
+      - ..:/workspace
+      # preserve the python virtual environment across container recreation
+      - zephyr-venv:/opt/venv
+
+    command: sleep infinity
+
+    stdin_open: true
+    tty: true
+
+volumes:
+    zephyr-venv:
+
