@@ -52,13 +52,68 @@ The Compose bind mount maps the directory containing this repository to
     ├── app/
     ├── compose.yaml
     ├── dockerfile
+    ├── zephyr-course.sh
     └── west.yml
 ```
 
-The Python virtual environment is stored separately in the Docker named volume
-`zephyr-venv`, mounted at `/opt/venv`.
+The Python virtual environment is stored in the `zephyr-venv` Docker named
+volume, mounted at `/opt/venv`. The CMake user package registry produced by
+`west zephyr-export` is stored in `zephyr-cmake-registry`, mounted at
+`/root/.cmake`. Both survive container recreation.
 
-## First-time setup
+## Helper script
+
+Run the helper from the directory containing `compose.yaml`. Its available
+commands can be displayed with:
+
+```bash
+./zephyr-course.sh --help
+```
+
+### Set up the environment
+
+Run the complete setup with:
+
+```bash
+./zephyr-course.sh setup
+```
+
+The command starts the development container and then:
+
+1. Initializes the West workspace if it is not already initialized.
+2. Updates the projects declared in `west.yml`.
+3. Installs or updates the required Python packages.
+4. Exports Zephyr to CMake's user package registry.
+5. Installs the ARM Zephyr SDK toolchain if it is not already installed.
+
+It is safe to run `setup` again. Existing West and SDK installations are
+detected, while the repeatable update, package installation, and export steps
+ensure that changes to the project dependencies are applied. The container is
+stopped when setup finishes or fails.
+
+### Build the application
+
+Pass the required Zephyr board target to `build`:
+
+```bash
+./zephyr-course.sh build rpi_pico2/rp2350a/m33
+```
+
+The command starts the container, verifies that setup completed successfully,
+and performs a pristine application build for the selected board. If the
+environment is incomplete, it asks you to run `setup` first. The container is
+stopped when the build finishes or fails.
+
+The general form is:
+
+```bash
+./zephyr-course.sh build <board>
+```
+
+## Manual setup and build
+
+The helper is the recommended interface. The equivalent individual commands
+are documented below for reference and troubleshooting.
 
 Build the image and start the development container:
 
@@ -112,7 +167,7 @@ docker compose exec --workdir /workspace/deps/zephyr zephyr-dev west sdk list
 The setup commands normally need to be executed only once. Do not run `west init`
 again after the West workspace has been initialized.
 
-## Build the course application
+### Build the application manually
 
 Replace `<board>` with the Zephyr board target you want to use:
 
@@ -143,36 +198,6 @@ docker compose exec \
   west build -p always -b <board> samples/basic/blinky
 ```
 
-## Daily workflow
-
-Start the existing development container:
-
-```bash
-docker compose up -d
-```
-
-Build the application:
-
-```bash
-docker compose exec zephyr-dev west build
-```
-
-Stop the container without deleting it:
-
-```bash
-docker compose stop
-```
-
-Alternatively, remove the service container while retaining the workspace and
-named virtual-environment volume:
-
-```bash
-docker compose down
-```
-
-The next `docker compose up -d` recreates the service container and reuses the
-existing `zephyr-venv` volume.
-
 ## Updating dependencies
 
 After changing the revision or projects in `west.yml`, update the repositories and
@@ -186,21 +211,20 @@ docker compose exec zephyr-dev west packages pip --install
 
 ## Resetting the Python environment
 
-The virtual environment survives container deletion because it is stored in a
-named volume. To remove all Compose-managed containers and named volumes and start
-again:
+The Python environment and CMake package registry survive container deletion
+because they are stored in named volumes. To remove all Compose-managed
+containers and named volumes and start again:
 
 ```bash
 docker compose down --volumes
-docker compose up --build -d
-docker compose exec zephyr-dev west packages pip --install
+./zephyr-course.sh setup
 ```
 
-The `--volumes` option deletes the persistent Python environment. It does not
-delete the bind-mounted source, downloaded modules, or SDK under `/workspace`.
+The `--volumes` option deletes the persistent Python environment, setup marker,
+and CMake package registry. It does not delete the bind-mounted source,
+downloaded modules, or SDK under `/workspace`.
 
 ## Manual installation
 
 To set up Zephyr without Docker, follow the official
 [Zephyr Getting Started Guide](https://docs.zephyrproject.org/latest/develop/getting_started/index.html)
-through the Blinky sample build.

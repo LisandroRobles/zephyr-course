@@ -14,6 +14,13 @@ services:
       - ..:/workspace
       # preserve the python virtual environment across container recreation
       - zephyr-venv:/opt/venv
+      # west zephyr-export writes the CMake package registry under root's home
+      - zephyr-cmake-registry:/root/.cmake
+      - type: bind
+        source: /media
+        target: /media
+        bind:
+          propagation: rslave
 
     command: sleep infinity
 
@@ -22,4 +29,4 @@ services:
 
 volumes:
     zephyr-venv:
-
+    zephyr-cmake-registry:
