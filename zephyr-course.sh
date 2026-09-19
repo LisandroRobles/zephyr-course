@@ -7,6 +7,7 @@ readonly WORKSPACE="/workspace"
 readonly ZEPHYR_DIR="${WORKSPACE}/deps/zephyr"
 readonly SDK_DIR="${WORKSPACE}/.zephyr-sdk"
 readonly SETUP_MARKER="/opt/venv/.zephyr-course-setup-complete"
+readonly RPI_OPENOCD="/opt/raspberrypi-openocd/bin/openocd"
 
 usage() {
     cat <<'EOF'
@@ -45,11 +46,6 @@ stop_service() {
 
 exec_zephyr() {
     compose exec "${SERVICE}" "$@"
-}
-
-workspace_is_initialized() {
-    exec_zephyr sh -c \
-        'test -f /workspace/.west/config && west topdir >/dev/null 2>&1'
 }
 
 sdk_is_installed() {
@@ -126,9 +122,8 @@ Run the following command first:
 EOF
         exit 1
     fi
-
-    echo "Building the application for ${board}..."
-    exec_zephyr west build -p always -b "${board}" app
+    echo "Building the application for ${board}..." \
+        -DOPENOCD="${RPI_OPENOCD}" # OPENOCD is a CMake cache variable. Set it explicitly so Zephyr records the Raspberry Pi fork in build/zephyr/runners.yaml instead of SDK OpenOCD. exec_zephyr west build -p always -b "${board}" app -- \
 }
 
 main() {
