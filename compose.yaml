@@ -10,17 +10,45 @@ services:
     working_dir: /workspace/zephyr-course
 
     volumes:
-      # compose.yaml is inside zephyr-course, so .. is west topdir
+      # The west workspace stopdir is volume managed by docker
+      # During setup, west init will create west topdir inside the docker
+      # container.
+      # Use a named volume for the soruce code to be accesible from the host
       - ..:/workspace
-      # preserve the python virtual environment across container recreation
+      # The docker container creates the virtual environment the first time
+      # Use a named volume to persist the virtual environment accross different
+      # container recreation
       - zephyr-venv:/opt/venv
-      # west zephyr-export writes the CMake package registry under root's home
+       
+      # The first time, the docker container rund 'west zephyr-export' to expose
+      # the zephyr package in CMake package registry under container's root home
+      # Use a named volume to persist CMake registry across different container
+      # run
       - zephyr-cmake-registry:/root/.cmake
+
+      # Bind mount /dev/bus/usb
+      # It is necessary to make this host directory visible to the container in order
+      # for it detect the debug probe and be available to 'west flash/debug' the board
+      # (currently RPi_Pico2w) using openocd
+      # This will only work in Linux host to Linux container situation
+      - type: bind
+        source: /dev/bus/usb
+        target: /dev/bus/usb
+
+      # Bind mount /media
+      # It is necessary to make this host directory visible to the container so it is
+      # able to detect the board (RPi_Pico2w) and 'west flash' using uf2
+      # This will only work in Linux host to Linux container situation
+      # for ti to detect
       - type: bind
         source: /media
         target: /media
         bind:
           propagation: rslave
+
+    # Define device cgroup rule so the container process can have access to USB device nodes
+    device_cgroup_rules:
+      - "c 189:* rmw"
 
     command: sleep infinity
 

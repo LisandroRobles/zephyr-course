@@ -1,9 +1,9 @@
 # Zephyr foundational course
 
-This repository contains the course application and a Docker Compose development
-environment for Zephyr RTOS 4.2.0.
+This repository contains a Docker Compose development environment for Zephyr RTOS based
+applications
 
-The docker container provides the operating-system tools, Python, `west`, and the Zephyr
+The docker container provides the operating-system tools, `west`, and the Zephyr
 SDK toolchain. The repository and downloaded Zephyr modules are stored in the host
 workspace, while a Docker named volume preserves the Python virtual environment.
 
@@ -56,26 +56,24 @@ The Compose bind mount maps the directory containing this repository to
     └── west.yml
 ```
 
-The Python virtual environment is stored in the `zephyr-venv` Docker named
-volume, mounted at `/opt/venv`. The CMake user package registry produced by
-`west zephyr-export` is stored in `zephyr-cmake-registry`, mounted at
+* The Python virtual environment is stored in the `zephyr-venv` Docker named 
+volume, mounted at `/opt/venv`. 
+
+* The CMake user package registry produced by `west zephyr-export` is stored 
+in `zephyr-cmake-registry`, mounted at
 `/root/.cmake`. Both survive container recreation.
 
-## Helper script
+## Helper scripts
 
-Run the helper from the directory containing `compose.yaml`. Its available
-commands can be displayed with:
-
-```bash
-./zephyr-course.sh --help
-```
+The repository provides helper scripts to run the most common tasks: setup, build and flash
 
 ### Set up the environment
 
 Run the complete setup with:
 
 ```bash
-./zephyr-course.sh setup
+docker compose up -d
+docker compose run --rm zephyr-dev scripts/setup.sh
 ```
 
 The command starts the development container and then:
@@ -88,15 +86,15 @@ The command starts the development container and then:
 
 It is safe to run `setup` again. Existing West and SDK installations are
 detected, while the repeatable update, package installation, and export steps
-ensure that changes to the project dependencies are applied. The container is
-stopped when setup finishes or fails.
+ensure that changes to the project dependencies are applied. 
 
 ### Build the application
 
 Pass the required Zephyr board target to `build`:
 
 ```bash
-./zephyr-course.sh build rpi_pico2/rp2350a/m33
+docker compose up -d
+docker compose run --rm zephyr-dev scripts/build.sh <app> <board>
 ```
 
 The command starts the container, verifies that setup completed successfully,
@@ -104,18 +102,24 @@ and performs a pristine application build for the selected board. If the
 environment is incomplete, it asks you to run `setup` first. The container is
 stopped when the build finishes or fails.
 
-The general form is:
+### Flash and debug
+
+To flash or debug:
 
 ```bash
-./zephyr-course.sh build <board>
+docker compose up -d
+docker compose run --rm zephyr-dev scripts/flash.sh <runner>
 ```
 
 ## Manual setup and build
 
-The helper is the recommended interface. The equivalent individual commands
-are documented below for reference and troubleshooting.
+The helper scripts are the recommended interface, but they only group the commands specified on the
+Zephyr's getting started guide:
 
-Build the image and start the development container:
+<https://docs.zephyrproject.org/latest/develop/getting_started/index.html>
+
+The manual setup can be made by running the commands on the host computer or can be executed
+inside the container:
 
 ```bash
 docker compose up --build -d
@@ -189,15 +193,6 @@ docker compose exec zephyr-dev \
   west build -p always -b <board> path/to/application
 ```
 
-## Build the Zephyr Blinky sample
-
-```bash
-docker compose exec \
-  --workdir /workspace/deps/zephyr \
-  zephyr-dev \
-  west build -p always -b <board> samples/basic/blinky
-```
-
 ## Updating dependencies
 
 After changing the revision or projects in `west.yml`, update the repositories and
@@ -217,7 +212,7 @@ containers and named volumes and start again:
 
 ```bash
 docker compose down --volumes
-./zephyr-course.sh setup
+docker compose run --rm zephyr-dev scripts/setup.sh
 ```
 
 The `--volumes` option deletes the persistent Python environment, setup marker,
